@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - King's PrideNation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="font-poppins bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-black text-white py-4">
+      <div class="container mx-auto px-4 flex justify-between items-center">
+        <a href="index.html" class="text-2xl font-bold font-playfair text-gold">
+          👑 King's PrideNation - Admin
+        </a>
+        <div class="flex items-center space-x-4">
+          <button
+            onclick="logoutAdmin()"
+            class="text-red-400 hover:text-red-300 transition-colors"
+          >
+            Logout
+          </button>
+          <a
+            href="index.html"
+            class="text-gold hover:text-yellow-400 transition-colors"
+          >
+            ← Back to Store
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-12">
+      <h1 class="text-5xl font-playfair font-bold text-center mb-12 text-black">
+        Admin Dashboard
+      </h1>
+
+      <!-- Add New Shoe Form -->
+      <div class="bg-white rounded-lg shadow-lg p-8 mb-12">
+        <h2 class="text-3xl font-bold mb-6 text-black">Add New Shoe</h2>
+        <form id="add-shoe-form" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-bold mb-2"
+              >Shoe Name *</label
+            >
+            <input
+              type="text"
+              id="shoe-name"
+              required
+              class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-gold"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-bold mb-2"
+              >Price (KES) *</label
+            >
+            <input
+              type="number"
+              id="shoe-price"
+              required
+              min="0"
+              class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-gold"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-bold mb-2">Category *</label>
+            <select
+              id="shoe-category"
+              required
+              class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-gold"
+            >
+              <option value="">Select Category</option>
+              <option value="Sneakers">Sneakers</option>
+              <option value="Formal">Formal</option>
+              <option value="Boots">Boots</option>
+              <option value="Sandals">Sandals</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-bold mb-2"
+              >Available Sizes (comma separated, e.g., 38,39,40,41,42) *</label
+            >
+            <input
+              type="text"
+              id="shoe-sizes"
+              required
+              placeholder="38,39,40,41,42"
+              class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-gold"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-bold mb-2"
+              >Image URL *</label
+            >
+            <input
+              type="url"
+              id="shoe-image"
+              required
+              placeholder="images/kp1.jpg"
+              class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-gold"
+            />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-bold mb-2"
+              >Stock Status *</label
+            >
+            <select
+              id="shoe-stock"
+              required
+              class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-gold"
+            >
+              <option value="">Select Status</option>
+              <option value="in stock">In Stock</option>
+              <option value="in production">In Production</option>
+              <option value="out of stock">Out of Stock</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary w-full">Add Shoe</button>
+        </form>
+      </div>
+
+      <!-- Shoes List -->
+      <div class="bg-white rounded-lg shadow-lg p-8">
+        <h2 class="text-3xl font-bold mb-6 text-black">All Shoes</h2>
+        <div id="shoes-list" class="space-y-4">
+          <!-- Shoes will be dynamically loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      // Admin-specific functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        // Check if admin is logged in
+        if (sessionStorage.getItem("adminLoggedIn") !== "true") {
+          alert("Access denied. Please sign in as admin first.");
+          window.location.href = "index.html";
+          return;
+        }
+
+        // Initialize sample products if needed
+        if (!localStorage.getItem("shoes")) {
+          // Call the initialization function from script.js
+          if (typeof initializeSampleProducts === "function") {
+            initializeSampleProducts();
+          }
+        }
+
+        loadAdminShoes();
+
+        document
+          .getElementById("add-shoe-form")
+          .addEventListener("submit", function (e) {
+            e.preventDefault();
+            addShoe();
+          });
+      });
+
+      // Function to trigger product updates on shop page
+      function triggerProductUpdate() {
+        // Force localStorage update to trigger storage event in other tabs
+        const shoes = getShoes();
+        localStorage.setItem("shoes", JSON.stringify(shoes));
+
+        // Also trigger custom event for same-window updates
+        if (window.parent !== window) {
+          window.parent.dispatchEvent(new Event("productsUpdated"));
+        }
+      }
+
+      function loadAdminShoes() {
+        const shoes = getShoes();
+        const shoesList = document.getElementById("shoes-list");
+
+        if (shoes.length === 0) {
+          shoesList.innerHTML =
+            '<p class="text-gray-600 text-center py-8">No shoes added yet.</p>';
+          return;
+        }
+
+        shoesList.innerHTML = shoes
+          .map((shoe, index) => {
+            const stockStatus = shoe.stockStatus || "in stock";
+            const stockBadgeClass =
+              stockStatus === "in stock"
+                ? "bg-green-500"
+                : stockStatus === "in production"
+                ? "bg-yellow-500"
+                : "bg-red-500";
+            return `
+                <div class="border rounded-lg p-6 flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex items-center space-x-4 flex-1 min-w-0">
+                        <img src="${shoe.image}" alt="${
+              shoe.name
+            }" class="w-20 h-20 object-cover rounded">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-lg text-black">${
+                              shoe.name
+                            }</h3>
+                            <p class="text-gray-600">${
+                              shoe.category
+                            } | KES ${shoe.price.toLocaleString()}</p>
+                            <p class="text-sm text-gray-500">Sizes: ${shoe.sizes.join(
+                              ", "
+                            )}</p>
+                            <span class="inline-block mt-2 px-3 py-1 rounded-full text-white text-xs font-bold ${stockBadgeClass}">
+                                ${
+                                  stockStatus.charAt(0).toUpperCase() +
+                                  stockStatus.slice(1)
+                                }
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editShoe(${index})" class="btn-secondary">Edit</button>
+                        <button onclick="deleteShoe(${index})" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors">Delete</button>
+                    </div>
+                </div>
+            `;
+          })
+          .join("");
+      }
+
+      function addShoe() {
+        const name = document.getElementById("shoe-name").value.trim();
+        const price = parseFloat(document.getElementById("shoe-price").value);
+        const category = document.getElementById("shoe-category").value;
+        const sizesStr = document.getElementById("shoe-sizes").value.trim();
+        const image = document.getElementById("shoe-image").value.trim();
+        const stockStatus = document.getElementById("shoe-stock").value;
+
+        if (
+          !name ||
+          !price ||
+          !category ||
+          !sizesStr ||
+          !image ||
+          !stockStatus
+        ) {
+          alert("Please fill in all fields");
+          return;
+        }
+
+        const sizes = sizesStr
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s);
+
+        const newShoe = {
+          id: Date.now(),
+          name,
+          price,
+          category,
+          sizes,
+          image,
+          stockStatus,
+        };
+
+        const shoes = getShoes();
+        shoes.push(newShoe);
+        saveShoes(shoes);
+
+        // Trigger update event for shop page
+        triggerProductUpdate();
+
+        // Reset form
+        document.getElementById("add-shoe-form").reset();
+
+        // Reload list
+        loadAdminShoes();
+
+        alert(
+          "Shoe added successfully! Changes are now visible on the shop page."
+        );
+      }
+
+      function editShoe(index) {
+        const shoes = getShoes();
+        const shoe = shoes[index];
+
+        document.getElementById("shoe-name").value = shoe.name;
+        document.getElementById("shoe-price").value = shoe.price;
+        document.getElementById("shoe-category").value = shoe.category;
+        document.getElementById("shoe-sizes").value = shoe.sizes.join(", ");
+        document.getElementById("shoe-image").value = shoe.image;
+        document.getElementById("shoe-stock").value =
+          shoe.stockStatus || "in stock";
+
+        // Scroll to form
+        document
+          .getElementById("add-shoe-form")
+          .scrollIntoView({ behavior: "smooth" });
+
+        // Change form to edit mode
+        const form = document.getElementById("add-shoe-form");
+        const formTitle = form.previousElementSibling;
+        if (formTitle) formTitle.textContent = "Edit Shoe";
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.textContent = "Update Shoe";
+        submitBtn.onclick = function (e) {
+          e.preventDefault();
+          updateShoe(index);
+        };
+      }
+
+      function updateShoe(index) {
+        const name = document.getElementById("shoe-name").value.trim();
+        const price = parseFloat(document.getElementById("shoe-price").value);
+        const category = document.getElementById("shoe-category").value;
+        const sizesStr = document.getElementById("shoe-sizes").value.trim();
+        const image = document.getElementById("shoe-image").value.trim();
+        const stockStatus = document.getElementById("shoe-stock").value;
+
+        if (
+          !name ||
+          !price ||
+          !category ||
+          !sizesStr ||
+          !image ||
+          !stockStatus
+        ) {
+          alert("Please fill in all fields");
+          return;
+        }
+
+        const sizes = sizesStr
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s);
+
+        const shoes = getShoes();
+        shoes[index] = {
+          ...shoes[index],
+          name,
+          price,
+          category,
+          sizes,
+          image,
+          stockStatus,
+        };
+
+        saveShoes(shoes);
+
+        // Trigger update event for shop page
+        triggerProductUpdate();
+
+        // Reset form
+        document.getElementById("add-shoe-form").reset();
+        const form = document.getElementById("add-shoe-form");
+        const formTitle = form.previousElementSibling;
+        if (formTitle) formTitle.textContent = "Add New Shoe";
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.textContent = "Add Shoe";
+        submitBtn.onclick = null;
+
+        // Reload list
+        loadAdminShoes();
+
+        alert(
+          "Shoe updated successfully! Changes are now visible on the shop page."
+        );
+      }
+
+      function deleteShoe(index) {
+        if (confirm("Are you sure you want to delete this shoe?")) {
+          const shoes = getShoes();
+          shoes.splice(index, 1);
+          saveShoes(shoes);
+
+          // Trigger update event for shop page
+          triggerProductUpdate();
+
+          loadAdminShoes();
+          alert(
+            "Shoe deleted successfully! Changes are now visible on the shop page."
+          );
+        }
+      }
+
+      function logoutAdmin() {
+        if (confirm("Are you sure you want to logout?")) {
+          sessionStorage.removeItem("adminLoggedIn");
+          window.location.href = "index.html";
+        }
+      }
+    </script>
+  </body>
+</html>
